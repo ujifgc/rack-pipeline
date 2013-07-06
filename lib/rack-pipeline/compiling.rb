@@ -1,5 +1,5 @@
 module RackPipeline
-  module Compiler
+  module Compiling
     def self.process( source, target )
       nil
     end

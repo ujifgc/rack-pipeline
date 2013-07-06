@@ -1,5 +1,5 @@
-﻿module RackPipeline
-  module Compressor
+module RackPipeline
+  module Compressing
     def self.process( source, target )
       nil
     end

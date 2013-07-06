@@ -1,33 +1,18 @@
-require 'set'
-require 'fileutils'
 require 'time'
-require 'digest/md5'
 
 require 'rack-pipeline/version'
+require 'rack-pipeline/caching'
+require 'rack-pipeline/processing'
 
 module RackPipeline
   class MustRepopulate < Exception; end
-  class NeedCompiler < Exception; end
   class Base
+    include Caching
+    include Processing
+
     attr_accessor :assets, :settings
 
     STATIC_TYPES = { '.js' => :js, '.css' => :css }.freeze
-    DEFAULT_SETTINGS = {
-      :temp => nil,
-      :compress => false,
-      :combine => false,
-      :content_type => {
-        '.css' => 'text/css',
-        '.js' => 'application/javascript',
-      },
-      :root => 'assets',
-      :css => {
-        :app => '**/*.css',
-      },
-      :js => {
-        :app => '**/*.js',
-      },
-    }.freeze
 
     def assets_for( pipes, type, opts = {} )
       Array(pipes).inject([]) do |all,pipe|
@@ -38,7 +23,22 @@ module RackPipeline
     def initialize(app, *args)
       @generations = 0
       @assets = {}
-      @settings = DEFAULT_SETTINGS.dup
+      @settings = {
+        :temp => nil,
+        :compress => false,
+        :combine => false,
+        :content_type => {
+          '.css' => 'text/css',
+          '.js' => 'application/javascript',
+        },
+        :root => 'assets',
+        :css => {
+          :app => '**/*.css',
+        },
+        :js => {
+          :app => '**/*.js',
+        },
+      }
       @settings.merge!(args.pop)  if args.last.kind_of?(Hash)
       File.directory?(@settings[:root])  or fail Errno::ENOTDIR, @settings[:root]
       create_temp_directory
@@ -80,14 +80,6 @@ module RackPipeline
 
     private
 
-    def compress?
-      settings[:compress]
-    end
-
-    def combine?
-      settings[:combine]
-    end
-
     def static_type( file )
       if file.kind_of? String
         STATIC_TYPES[file] || STATIC_TYPES[File.extname(file)]
@@ -121,63 +113,6 @@ module RackPipeline
         break  if result
       end
       result
-    end
-
-    def cache_target( source, target )
-      target_path = File.join( settings[:temp], "#{target}.#{mtime_hash(source)}" )
-      if File.file?(target_path)
-        target_path
-      else
-        cleanup_hash(target)
-        yield target_path
-      end
-    end
-
-    def combine( sources, target )
-      cache_target( sources, target ) do |target_path|
-        body = sources.inject('') do |all,(source,kind)|
-          all << File.read(get_or_compile(source, static_type(target))).encode('utf-8') + "\n\n"
-        end
-        File.write( target_path, body )
-        target_path
-      end
-    end
-
-    def compile( source, target )
-      cache_target( source, target ) do |target_path|
-        compiled_file = if defined? Compiler
-          Compiler.process source, target_path
-        end
-        raise NeedCompiler, "for #{source} => #{target}"  unless compiled_file
-        compiled_file
-      end
-    end
-
-    def compress( source )
-      if compress? && defined?(Compressor)
-        Compressor.process source
-      else
-        source
-      end
-    end
-
-    def create_temp_directory
-      temp = if settings[:temp]
-        settings[:temp]
-      else
-        require 'tmpdir'
-        File.join( Dir.tmpdir, 'RackPipeline' )
-      end
-      FileUtils.mkdir_p temp
-      settings[:temp] = temp
-    end
-
-    def cleanup_hash( target )
-      FileUtils.rm Dir.glob( File.join( settings[:temp], target ) + '.*' )
-    end
-
-    def mtime_hash( sources )
-      Digest::MD5.hexdigest(Array(sources).inject(''){ |all,(file,_)| all << "#{file}:#{File.mtime(file)}" })
     end
 
     def file_kind( file )
