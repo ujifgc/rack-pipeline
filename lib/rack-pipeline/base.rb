@@ -47,26 +47,14 @@ module RackPipeline
     end
 
     def inspect
-      { :settings => settings, :assets => @assets }
+      { :settings => settings, :assets => assets }
     end
 
     def call(env)
       env['rack-pipeline'] = self
-      file_path = prepare_pipe(env['PATH_INFO'])
-      if file_path
+      if file_path = prepare_pipe(env['PATH_INFO'])
         begin
-          body = File.read file_path
-          charset = "; charset=#{body.encoding.to_s}"
-          time = File.mtime(file_path).httpdate
-          headers = {}
-          headers['Last-Modified'] = time
-          if time == env['HTTP_IF_MODIFIED_SINCE']
-            [304, headers, '']
-          else
-            headers['Content-Type'] = "#{settings[:content_type][File.extname(file_path)] || 'text'}#{charset}"
-            headers['Content-Length'] = File.size(file_path).to_s
-            [200, headers, body]
-          end
+          serve_file( file_path, env['HTTP_IF_MODIFIED_SINCE'] )
         rescue Errno::ENOENT
           raise MustRepopulate
         end
@@ -80,6 +68,18 @@ module RackPipeline
 
     private
 
+    def serve_file( file, mtime )
+      headers = { 'Last-Modified' => File.mtime(file).httpdate }
+      if mtime == headers['Last-Modified']
+        [304, headers, '']
+      else
+        body = File.read file
+        headers['Content-Type'] = "#{settings[:content_type][File.extname(file)] || 'text'}; charset=#{body.encoding.to_s}"
+        headers['Content-Length'] = File.size(file).to_s
+        [200, headers, body]
+      end
+    end
+
     def static_type( file )
       if file.kind_of? String
         STATIC_TYPES[file] || STATIC_TYPES[File.extname(file)]
@@ -89,10 +89,9 @@ module RackPipeline
     end
 
     def prepare_pipe( path_info )
-      file = path_info.partition('?').first.sub(/^\//,'')
+      file = path_info.sub( /^\/(.*)\??.*$/, '\1' )
       type = static_type(file)
-      ready_file = get_or_compile(file, type)
-      unless ready_file
+      unless ready_file = get_or_compile(file, type)
         pipename = File.basename(file, '.*').to_sym
         if assets[type] && assets[type][pipename]
           ready_file = combine( assets[type][pipename], File.basename(file) )
