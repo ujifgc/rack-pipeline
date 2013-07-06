@@ -1,4 +1,4 @@
 $LOAD_PATH.unshift File.expand_path('../../lib', __FILE__)
-require 'rack-pipeline'
 
 require 'minitest/autorun'
+require 'awesome_print'

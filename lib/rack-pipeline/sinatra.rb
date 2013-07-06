@@ -6,7 +6,6 @@ module RackPipeline
     end
     module Helpers
       def pipeline( pipes = [ :app ], types = [ :css, :js ], opts = {} )
-        opts.reverse_merge! :environment => settings.environment
         Array(types).map do |type|
           assets = env['rack-pipeline'].assets_for( pipes, type, opts )
           assets.map do |asset|
