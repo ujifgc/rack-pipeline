@@ -17,6 +17,11 @@ describe RackPipeline::Base do
   end
 
   it 'should pass to underlying app' do
+    response = @r1.get('/')
+    @mockapp.verify
+  end
+
+  it 'should pass to underlying app' do
     response = @r1.get('/assets/stylesheets/non-existing.css')
     @mockapp.verify
   end

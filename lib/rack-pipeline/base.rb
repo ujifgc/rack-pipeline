@@ -90,7 +90,7 @@ module RackPipeline
 
     def prepare_pipe( path_info )
       file = path_info.sub( /^\/(.*)\??.*$/, '\1' )
-      type = static_type(file)
+      type = static_type(file)  or return nil
       unless ready_file = get_or_compile(file, type)
         pipename = File.basename(file, '.*').to_sym
         if assets[type] && assets[type][pipename]
