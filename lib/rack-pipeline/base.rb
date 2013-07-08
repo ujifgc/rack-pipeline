@@ -16,7 +16,7 @@ module RackPipeline
 
     def assets_for( pipes, type, opts = {} )
       Array(pipes).inject([]) do |all,pipe|
-        all += Array( combine? ? assets[type][pipe] : "#{pipe}.#{type}" )
+        all += Array( combine? ? "#{pipe}.#{type}" : assets[type][pipe].keys )
       end.compact.uniq
     end
 
