@@ -53,11 +53,7 @@ module RackPipeline
     def call(env)
       env['rack-pipeline'] = self
       if file_path = prepare_pipe(env['PATH_INFO'])
-        begin
-          serve_file( file_path, env['HTTP_IF_MODIFIED_SINCE'] )
-        rescue Errno::ENOENT
-          raise MustRepopulate
-        end
+        serve_file( file_path, env['HTTP_IF_MODIFIED_SINCE'] )
       else
         @app.call(env)
       end
@@ -78,6 +74,8 @@ module RackPipeline
         headers['Content-Length'] = File.size(file).to_s
         [200, headers, body]
       end
+    rescue Errno::ENOENT
+      raise MustRepopulate
     end
 
     def static_type( file )
@@ -98,6 +96,8 @@ module RackPipeline
         end
       end
       compress ready_file
+    rescue Errno::ENOENT
+      raise MustRepopulate
     end
 
     def get_or_compile( source, type )
