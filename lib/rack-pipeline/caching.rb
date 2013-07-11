@@ -4,7 +4,7 @@ require 'fileutils'
 module RackPipeline
   module Caching
     def cache_target( source, target )
-      target_path = File.join( settings[:temp], "#{target}.#{calculate_hash(source)}" )
+      target_path = File.join( settings[:temp], "#{File.basename(target)}.#{calculate_hash(source)}#{File.extname(target)}" )
       if File.file?(target_path)
         target_path
       else
@@ -25,7 +25,7 @@ module RackPipeline
     end
 
     def cleanup_cache( target )
-      FileUtils.rm Dir.glob( File.join( settings[:temp], target ) + '.*' )
+      FileUtils.rm Dir.glob( File.join( settings[:temp], File.basename(target) ) + '.*' )
     end
 
     def calculate_hash( sources )
