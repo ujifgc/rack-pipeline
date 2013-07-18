@@ -67,12 +67,12 @@ module RackPipeline
     def serve_file( file, mtime )
       headers = { 'Last-Modified' => File.mtime(file).httpdate }
       if mtime == headers['Last-Modified']
-        [304, headers, '']
+        [304, headers, []]
       else
         body = File.read file
         headers['Content-Type'] = "#{settings[:content_type][File.extname(file)] || 'text'}; charset=#{body.encoding.to_s}"
         headers['Content-Length'] = File.size(file).to_s
-        [200, headers, body]
+        [200, headers, [body]]
       end
     rescue Errno::ENOENT
       raise MustRepopulate
