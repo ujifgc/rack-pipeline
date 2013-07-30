@@ -31,16 +31,14 @@ module RackPipeline
           '.css' => 'text/css',
           '.js' => 'application/javascript',
         },
-        :root => 'assets',
         :css => {
-          :app => '**/*.css',
+          :app => 'assets/**/*.css',
         },
         :js => {
-          :app => '**/*.js',
+          :app => 'assets/**/*.js',
         },
       }
       @settings.merge!(args.pop)  if args.last.kind_of?(Hash)
-      File.directory?(@settings[:root])  or fail Errno::ENOTDIR, @settings[:root]
       create_temp_directory
       populate_pipelines
       @app = app
@@ -120,7 +118,7 @@ module RackPipeline
 
     def extract_files( globs )
       Array(globs).each_with_object({}) do |glob,all|
-        Dir.glob(File.join(settings[:root],glob)).sort.each do |file|
+        Dir.glob(glob).sort.each do |file|
           all[file] = file_kind( file )
         end
       end
