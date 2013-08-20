@@ -12,7 +12,8 @@ module RackPipeline
 
     attr_accessor :assets, :settings
 
-    STATIC_TYPES = { '.js' => :js, '.css' => :css }.freeze
+    STATIC_TYPES  = { '.js' => :js,                      '.css' => :css       }.freeze
+    CONTENT_TYPES = { '.js' => 'application/javascript', '.css' => 'text/css' }.freeze
 
     def assets_for( pipes, type, opts = {} )
       Array(pipes).inject([]) do |all,pipe|
@@ -27,10 +28,6 @@ module RackPipeline
         :temp => nil,
         :compress => false,
         :combine => false,
-        :content_type => {
-          '.css' => 'text/css',
-          '.js' => 'application/javascript',
-        },
         :css => {
           :app => 'assets/**/*.css',
         },
@@ -68,7 +65,7 @@ module RackPipeline
         [304, headers, []]
       else
         body = File.read file
-        headers['Content-Type'] = "#{settings[:content_type][File.extname(file)] || 'text'}; charset=#{body.encoding.to_s}"
+        headers['Content-Type'] = "#{content_type(file)}; charset=#{body.encoding.to_s}"
         headers['Content-Length'] = File.size(file).to_s
         [200, headers, [body]]
       end
@@ -82,6 +79,10 @@ module RackPipeline
       else
         STATIC_TYPES.values.include?(file) && file
       end
+    end
+
+    def content_type( file )
+      CONTENT_TYPES[File.extname(file)] || 'text'
     end
 
     def prepare_pipe( path_info )

@@ -3,10 +3,8 @@ require 'rack/test'
 require 'rack-pipeline/base'
 
 describe RackPipeline::Base do
-  SETTINGS_1 = {
-  }
-  SETTINGS_2 = {
-  }
+  SETTINGS_1 = {}
+  SETTINGS_2 = {}
 
   before do
     Dir.chdir File.dirname(__FILE__)
@@ -46,6 +44,16 @@ describe RackPipeline::Base do
   it 'should respond with single js' do
     response = @r1.get('/assets/stylesheets/a.css')
     response.body.must_include 'color: white'
+  end
+
+  it 'should have proper css content_type' do
+    response = @r1.get('/assets/stylesheets/a.css')
+    response.headers['Content-Type'].must_include 'text/css'
+  end
+
+  it 'should have proper js content_type' do
+    response = @r1.get('/app.js')
+    response.headers['Content-Type'].must_include 'application/javascript'
   end
 
   after do
