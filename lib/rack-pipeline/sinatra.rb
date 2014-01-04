@@ -5,16 +5,16 @@ module RackPipeline
       app.helpers Helpers
     end
     module Helpers
-      def pipeline( pipes = [ :app ], types = [ :css, :js ], opts = {} )
+      def pipeline(pipes = [ :app ], types = [ :css, :js ], opts = {})
         Array(types).map do |type|
-          assets = env['rack-pipeline'].assets_for( pipes, type, opts )
+          assets = env['rack-pipeline'].assets_for(pipes, type, opts)
           assets.map do |asset|
-            pipe_tag( type, asset )
+            pipe_tag(type, asset)
           end.join("\n")
         end.join("\n")
       end
 
-      def pipe_tag( type, asset )
+      def pipe_tag(type, asset)
         case type.to_sym
         when :css
           %(<link href="#{request.script_name}/#{asset}" rel="stylesheet">)

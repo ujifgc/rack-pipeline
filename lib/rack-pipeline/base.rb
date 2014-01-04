@@ -15,9 +15,9 @@ module RackPipeline
     STATIC_TYPES  = { '.js' => :js,                      '.css' => :css       }.freeze
     CONTENT_TYPES = { '.js' => 'application/javascript', '.css' => 'text/css' }.freeze
 
-    def assets_for( pipes, type, opts = {} )
+    def assets_for(pipes, type, opts = {})
       Array(pipes).inject([]) do |all,pipe|
-        all += Array( combine? ? "#{pipe}.#{type}" : assets[type][pipe].keys )
+        all += Array(combine? ? "#{pipe}.#{type}" : assets[type][pipe].keys)
       end.compact.uniq
     end
 
@@ -48,7 +48,7 @@ module RackPipeline
     def call(env)
       env['rack-pipeline'] = self
       if file_path = prepare_pipe(env['PATH_INFO'])
-        serve_file( file_path, env['HTTP_IF_MODIFIED_SINCE'] )
+        serve_file(file_path, env['HTTP_IF_MODIFIED_SINCE'])
       else
         @app.call(env)
       end
@@ -59,7 +59,7 @@ module RackPipeline
 
     private
 
-    def serve_file( file, mtime )
+    def serve_file(file, mtime)
       headers = { 'Last-Modified' => File.mtime(file).httpdate }
       if mtime == headers['Last-Modified']
         [304, headers, []]
@@ -73,7 +73,7 @@ module RackPipeline
       raise MustRepopulate
     end
 
-    def static_type( file )
+    def static_type(file)
       if file.kind_of? String
         STATIC_TYPES[file] || STATIC_TYPES[File.extname(file)]
       else
@@ -81,52 +81,53 @@ module RackPipeline
       end
     end
 
-    def content_type( file )
+    def content_type(file)
       CONTENT_TYPES[File.extname(file)] || 'text'
     end
 
-    def prepare_pipe( path_info )
-      file = path_info.sub( /^\/(.*)\??.*$/, '\1' )
+    def prepare_pipe(path_info)
+      file = path_info.sub(/^\/(.*)\??.*$/, '\1')
       type = static_type(file)  or return nil
       unless ready_file = get_or_compile(file, type)
         pipename = File.basename(file, '.*').to_sym
         if assets[type] && assets[type][pipename]
-          ready_file = combine( assets[type][pipename], File.basename(file) )
+          ready_file = combine(assets[type][pipename], File.basename(file))
         end
       end
-      compress ready_file
+      compress(ready_file, ready_file)  if ready_file
     rescue Errno::ENOENT
       raise MustRepopulate
     end
 
-    def get_or_compile( source, type )
+    def get_or_compile(source, type)
       result = nil
       assets[type].each do |pipe,files|
-        result = case files[source]
-        when :raw
-          source
-        when :source
-          compile( source, File.basename(source, '.*') + ".#{type}" )
-        end
+        result =
+          case files[source]
+          when :raw
+            source
+          when :source
+            compile(source, File.basename(source, '.*') + ".#{type}")
+          end
         break  if result
       end
       result
     end
 
-    def file_kind( file )
+    def file_kind(file)
       static_type(file) ? :raw : :source
     end
 
-    def extract_files( globs )
+    def extract_files(globs)
       Array(globs).each_with_object({}) do |glob,all|
         Dir.glob(glob).sort.each do |file|
-          all[file] = file_kind( file )
+          all[file] = file_kind(file)
         end
       end
     end
 
     def populate_pipelines
-      fail( SystemStackError, 'too many RackPipeline generations' )  if @generations > 5
+      fail SystemStackError, 'too many RackPipeline generations'  if @generations > 5
       @generations += 1
       STATIC_TYPES.each do |extname,type|
         pipes = settings[type]

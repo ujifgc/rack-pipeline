@@ -1,6 +1,6 @@
 module RackPipeline
   module Compiling
-    def self.process( source, target )
+    def self.process(source, target)
       nil
     end
   end
