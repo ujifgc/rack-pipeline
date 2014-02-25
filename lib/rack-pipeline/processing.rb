@@ -17,23 +17,16 @@ module RackPipeline
     end
 
     def compress(source, target)
+      return source unless settings[:compress] && defined?(Compressor)
       cache_target(source, target) do |target_path|
-        if settings[:compress] && defined?(Compressor)
-          Compressor.process(source, target_path)
-        else
-          FileUtils.cp(source, target_path)
-          target_path
-        end
+        Compressor.process(source, target_path)
       end
     end
 
     def compile(source, target)
+      fail LoadError, "no compiler for #{source} => #{target}" unless defined?(Compiler)
       cache_target(source, target) do |target_path|
-        if defined?(Compiler)
-          Compiler.process(source, target_path)
-        else
-          fail LoadError, "no compiler for #{source} => #{target}"
-        end
+        Compiler.process(source, target_path)
       end
     end
   end

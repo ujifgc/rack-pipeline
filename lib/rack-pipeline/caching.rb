@@ -29,7 +29,7 @@ module RackPipeline
     end
 
     def calculate_hash(sources)
-      Digest::MD5.hexdigest(Array(sources).inject(''){ |all,(file,_)| all << "#{file}:#{File.mtime(file)}" })
+      Digest::MD5.hexdigest(Array(sources).inject(''){ |all,(file,_)| all << "#{file}:#{File.mtime(file).to_i}" })
     end
   end
 end
