@@ -28,6 +28,7 @@ module RackPipeline
         :temp => nil,
         :compress => false,
         :combine => false,
+        :bust_cache => false,
         :css => {
           :app => 'assets/**/*.css',
         },

@@ -7,16 +7,18 @@ module RackPipeline
 
     module Helpers
       def pipeline(pipes = [ :app ], types = [ :css, :js ], opts = {})
+        bust_cache = respond_to?(:settings) && settings.respond_to?(:pipeline) && settings.pipeline[:bust_cache]
+        pipeline_object = env['rack-pipeline']
         Array(types).map do |type|
-          assets = env['rack-pipeline'].assets_for(pipes, type, opts)
+          assets = pipeline_object.assets_for(pipes, type, opts)
           assets.map do |asset|
-            pipe_tag(type, asset)
+            pipe_tag(type, asset, bust_cache)
           end.join("\n")
         end.join("\n")
       end
 
-      def pipe_tag(type, asset)
-        asset += cache_buster(asset)
+      def pipe_tag(type, asset, bust_cache=nil)
+        asset += cache_buster(asset) if bust_cache
         case type.to_sym
         when :css
           %(<link href="#{request.script_name}/#{asset}" rel="stylesheet">)
