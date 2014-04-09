@@ -17,7 +17,7 @@ module RackPipeline
 
     def assets_for(pipes, type, opts = {})
       Array(pipes).inject([]) do |all,pipe|
-        all += Array(combine? ? "#{pipe}.#{type}" : assets[type][pipe].keys)
+        all += Array(settings[:combine] ? "#{pipe}.#{type}" : assets[type][pipe].keys)
       end.compact.uniq
     end
 
@@ -87,9 +87,9 @@ module RackPipeline
     end
 
     def prepare_pipe(path_info)
-      file = path_info.sub(/^\/(.*)\??.*$/, '\1')
+      file = path_info.start_with?('/') ? path_info[1..-1] : path_info
       type = static_type(file)  or return nil
-      unless ready_file = get_or_compile(file, type)
+      unless ready_file = prepare_file(file, type)
         pipename = File.basename(file, '.*').to_sym
         if assets[type] && assets[type][pipename]
           ready_file = combine(assets[type][pipename], File.basename(file))
@@ -100,30 +100,25 @@ module RackPipeline
       raise MustRepopulate
     end
 
-    def get_or_compile(source, type)
-      result = nil
+    def prepare_file(source, type)
       assets[type].each do |pipe,files|
-        result =
-          case files[source]
-          when :raw
-            source
-          when :source
-            compile(source, File.basename(source, '.*') + ".#{type}")
-          end
-        break  if result
+        case files[source]
+        when :raw
+          return source
+        when :source
+          return compile(source, File.basename(source, '.*') + ".#{type}")
+        end
       end
-      result
+      nil
     end
 
     def file_kind(file)
       static_type(file) ? :raw : :source
     end
 
-    def extract_files(globs)
-      Array(globs).each_with_object({}) do |glob,all|
-        Dir.glob(glob).sort.each do |file|
-          all[file] = file_kind(file)
-        end
+    def glob_files(dirs)
+      Dir.glob(dirs).sort.each_with_object({}) do |file,all|
+        all[file] = file_kind(file)
       end
     end
 
@@ -133,8 +128,8 @@ module RackPipeline
       STATIC_TYPES.each do |extname,type|
         pipes = settings[type]
         assets[type] = {}
-        pipes.each do |pipe, globs|
-          assets[type][pipe] = extract_files(globs)
+        pipes.each do |pipe, dirs|
+          assets[type][pipe] = glob_files(dirs)
         end
       end
     end
