@@ -4,7 +4,12 @@ require 'rack-pipeline/base'
 
 describe RackPipeline::Base do
   SETTINGS_1 = {}
-  SETTINGS_2 = {}
+  SETTINGS_2 = {
+    :compress => true,
+    :js => {
+      :coffee => 'assets/**/*.coffee',
+    }
+  }
 
   before do
     Dir.chdir File.dirname(__FILE__)
@@ -54,6 +59,11 @@ describe RackPipeline::Base do
   it 'should have proper js content_type' do
     response = @r1.get('/app.js')
     response.headers['Content-Type'].must_include 'application/javascript'
+  end
+
+  it 'should properly compile and compress coffeescript' do
+    response = @r2.get('/coffee.js')
+    response.body.must_include '=function('
   end
 
   after do
