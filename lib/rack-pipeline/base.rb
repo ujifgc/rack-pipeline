@@ -37,7 +37,7 @@ module RackPipeline
         },
       }
       @settings.merge!(args.pop)  if args.last.kind_of?(Hash)
-      create_temp_directory
+      ensure_temp_directory
       populate_pipelines
       @app = app
     end
@@ -47,6 +47,7 @@ module RackPipeline
     end
 
     def call(env)
+      @env = env
       env['rack-pipeline'] = self
       if file_path = prepare_pipe(env['PATH_INFO'])
         serve_file(file_path, env['HTTP_IF_MODIFIED_SINCE'])
@@ -60,15 +61,26 @@ module RackPipeline
 
     private
 
+    def busted?
+      result = settings[:bust_cache] && @busted
+      @busted = false
+      result
+    end
+
     def serve_file(file, mtime)
       headers = { 'Last-Modified' => File.mtime(file).httpdate }
       if mtime == headers['Last-Modified']
         [304, headers, []]
       else
-        body = File.read file
-        headers['Content-Type'] = "#{content_type(file)}; charset=#{body.encoding.to_s}"
-        headers['Content-Length'] = File.size(file).to_s
-        [200, headers, [body]]
+        if busted?
+          headers['Location'] = "#{@env['PATH_INFO']}?#{File.mtime(file).to_i}"
+          [302, headers, []]
+        else
+          body = File.read file
+          headers['Content-Type'] = "#{content_type(file)}; charset=#{body.encoding.to_s}"
+          headers['Content-Length'] = File.size(file).to_s
+          [200, headers, [body]]
+        end
       end
     rescue Errno::ENOENT
       raise MustRepopulate
@@ -95,7 +107,7 @@ module RackPipeline
           ready_file = combine(assets[type][pipename], File.basename(file))
         end
       end
-      compress(ready_file, ready_file)  if ready_file
+      compress(ready_file, File.basename(ready_file))  if ready_file
     rescue Errno::ENOENT
       raise MustRepopulate
     end
@@ -116,9 +128,11 @@ module RackPipeline
       static_type(file) ? :raw : :source
     end
 
-    def glob_files(dirs)
-      Dir.glob(dirs).sort.each_with_object({}) do |file,all|
-        all[file] = file_kind(file)
+    def glob_files(globs)
+      Array(globs).each_with_object({}) do |glob,all|
+        Dir.glob(glob).sort.each do |file|
+          all[file] = file_kind(file)
+        end
       end
     end
 

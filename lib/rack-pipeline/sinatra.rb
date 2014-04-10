@@ -6,13 +6,13 @@ module RackPipeline
     end
 
     module Helpers
-      def pipeline(pipes = [ :app ], types = [ :css, :js ], opts = {})
+      def pipeline(pipes = [ :app ], types = [ :css, :js ], options = {})
         bust_cache = respond_to?(:settings) && settings.respond_to?(:pipeline) && settings.pipeline[:bust_cache]
-        pipeline_object = env['rack-pipeline']
+        @pipeline_object = env['rack-pipeline']
         Array(types).map do |type|
-          assets = pipeline_object.assets_for(pipes, type, opts)
+          assets = @pipeline_object.assets_for(pipes, type, options)
           assets.map do |asset|
-            pipe_tag(type, asset, bust_cache)
+            pipe_tag(type, asset + options[:postfix].to_s, bust_cache)
           end.join("\n")
         end.join("\n")
       end
@@ -28,20 +28,18 @@ module RackPipeline
       end
 
       def cache_buster(file)
-        if File.file?(file)
+        compress = respond_to?(:settings) && settings.respond_to?(:pipeline) && settings.pipeline[:compress]
+        if !compress && File.file?(file)
           "?#{File.mtime(file).to_i}"
         else
-          temp = if respond_to?(:settings) && settings.respond_to?(:pipeline) && settings.pipeline[:temp]
-            settings.pipeline[:temp]
-          else
-            require 'tmpdir'
-            File.join(Dir.tmpdir, 'RackPipeline')
+          temp = @pipeline_object.ensure_temp_directory
+          max_mtime = 0
+          Dir.glob(File.join(temp, File.basename(file,'.*') << '.*' << File.extname(file))).each do |cached_file|
+            mtime = File.mtime(cached_file).to_i
+            max_mtime = mtime if mtime > max_mtime
           end
-          mtimes = []
-          Dir.glob(File.join(temp,file+'.*')).each do |cached_file|
-            mtimes << File.mtime(cached_file).to_i
-          end
-          "?#{mtimes.max || Time.now.to_i}"
+          max_mtime = Time.now.to_i if max_mtime == 0
+          "?#{max_mtime}"
         end
       end
     end

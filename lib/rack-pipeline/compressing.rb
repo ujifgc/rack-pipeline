@@ -1,3 +1,5 @@
+require 'fileutils'
+
 module RackPipeline
   module Compressing
     def self.process(source, target)
@@ -7,7 +9,8 @@ module RackPipeline
         Compressing.const_get(compressor[0]).process(source, target)
       else
         warn "no compressor found for #{source}"
-        source
+        FileUtils.cp source, target
+        target
       end
     end
 
